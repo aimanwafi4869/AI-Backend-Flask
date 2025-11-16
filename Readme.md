@@ -1,0 +1,1 @@
+This is AI project that uses Angular(Frontend) and Flask Server (Backend)
