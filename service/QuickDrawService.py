@@ -20,13 +20,16 @@ from transformers import AutoModelForImageClassification, AutoImageProcessor
 from transformers import TFAutoModelForImageClassification
 import traceback
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 # os.environ["ULTRALYTICS_CACHE"] = "False"   # Global cache kill (once per script)
 
-os.environ["KERAS_BACKEND"] = "jax"
 class QuickDrawService:
 
     def __init__(self):
-        print('init')
+        # print('init')
+        self.existingModel() # <--- Cannot be used in debug mode
+        pass
 
     def createModel(self):
         self.model = YOLO("yolo11n.pt")
@@ -35,42 +38,152 @@ class QuickDrawService:
         # labels_url = "https://raw.githubusercontent.com/googlecreativelab/quickdraw-dataset/master/categories.txt"
         # self.labels = np.loadtxt(labels_url, dtype=str, delimiter="\n", encoding="utf-8")
         
-        with open('D:\\Project\\Computer Vision\\FlaskApp-main\\model\\quickdraw\\categories.txt', "r", encoding="utf-8") as f:
+        with open('D:\\Project\\Jogja\\AI-Backend-Flask\\model\\quickdraw\\categories.txt', "r", encoding="utf-8") as f:
             lines = [line.strip() for line in f if line.strip()]
         np.save("model/quickdraw/labels.npy", lines)
 
     def existingModel(self):
         try:
             self.labels = np.load("model/quickdraw/labels.npy") 
-            print(self.labels)
-            print("Labels loaded:", len(self.labels))  # Should be 345
-            print("First 5 labels:", self.labels[:5])  # Expect: ['airplane', 'apple', 'banana', 'baseball bat', 'basketball']
-            print("Index of 'airplane':", self.labels.index('airplane'))  # Should be 0
+            # print(self.labels)
+            # print("Labels loaded:", len(self.labels))  # Should be 345
+            # print("First 5 labels:", self.labels[:5])  # Expect: ['airplane', 'apple', 'banana', 'baseball bat', 'basketball']
+            # print("Index of 'airplane':", self.labels.index('airplane'))  # Should be 0
         except:
             self.downloadLabels()
             self.labels = np.load("model/quickdraw/labels.npy") 
-            print(self.labels)
+            # print(self.labels)
+        # print(self.labels)
         self.model = keras.saving.load_model("D:\\Project\\Jogja\\AI-Backend-Flask\\model\\quickdraw\\quickdraw_classifier.keras")
     
     def preprocess_sketch(self,image):
-        if image.mode != "L":
-            image = image.convert("L")
-        image = image.resize((28, 28))
-        arr = np.array(image, dtype=np.float32) / 255.0
-        return np.expand_dims(arr, axis=(0))
+        background = PILImage.new('RGB', image.size, (255, 255, 255))  # white background
+        background.paste(image, mask=image.split()[-1])             # use alpha as mask
+        image = background
+        image = image.resize((28, 28), PILImage.Resampling.LANCZOS).convert('L')
+        
+        # plt.subplot(1, 3, 1)
+        # plt.title("Original ")
+        # plt.imshow(image)
+        # plt.axis('off')
+        # plt.show()
+        arr = np.array(image, dtype=np.float32)
+        arr = 255.0 - arr          
+        
+        arr = arr / 255.0
+        
+        # plt.subplot(1, 3, 2)
+        # plt.title("Original ")
+        # plt.imshow(arr)
+        # plt.axis('off')
+        # plt.show()
+        # print(arr.shape)
+        arr = arr.reshape(1, 28, 28, 1)
+        return arr
     
     def detect(self):
-        if "file" not in request.files:
-            return jsonify({"error": "No file"}), 400
+        # if "file" not in request.files:
+        #     return jsonify({"error": "No file"}), 400
 
-        file = request.files["file"]
+        # file = request.json['image']
+        file = request.files['file']
+        # print(file)
+        if file == None:
+            return {"error": "No file"}
         try:
-            # --- FIX: Use pil_open ---
+            
+            # original_array = np.array([[1, 2], [3, 4]], dtype=np.float32)
             img = pil_open(io.BytesIO(file.read()))
-            x = self.preprocess_sketch(img)
-            # -------------------------
+            # current_image = cv2.imread('images/current_images.png')
+            # image_array = np.array(img)
+            # plt.subplot(1, 3, 1)
+            # plt.title("Original ")
+            # plt.imshow(image_array)
+            # plt.axis('off')
+            # # plt.show()
+            # black = [0, 0, 0]
+            # white = [255, 255, 255]
 
-            probs = self.model.predict(x, verbose=0)[0]
+            # # Create a mask for black pixels
+            # # np.where returns the indices where the condition is true
+            # black_pixels_mask = np.where(current_image == black, white, axis=-1)
+            # plt.subplot(1, 3, 2)
+            # plt.title("Chnaged")
+            # plt.imshow(black_pixels_mask)
+            # plt.axis('off')
+            # plt.show()
+            img = self.preprocess_sketch(img)
+            # image_array /= 255.0
+            # print(image_array.dtype)
+            # print(image_array.shape)
+            # print(image_array)
+            # image_data = base64.b64decode(file)
+            # image_bytes = io.BytesIO(image_data)
+            # image_bytes = io.BytesIO(image_data)
+            # cv2.imwrite('images/my_image.png', image_data)
+            # with open("images/imageToSave.png", "wb") as fh:
+            #     fh.write(base64.decodebytes(image_data))
+            
+            # img = PILImage.open(image_bytes).convert('L')
+            # plt.figure(figsize=(8, 4))
+            # plt.subplot(1, 3, 1)
+            # plt.title("Original Image")
+            # plt.imshow(mpimg.imread(image_bytes, format='png'))   # or 'jpg' if it's JPEG
+            # plt.axis('off')
+            # plt.show()
+            # nparr = np.frombuffer(image_data , np.uint8)
+            # image_np = cv2.imdecode(nparr, cv2.IMREAD_GRAYSCALE)
+            # success = cv2.imwrite('images/my_image.png', image_np)
+            # # np.save(image_bytes, original_array)
+            # # nparr = np.load(image_bytes)# Original resized image
+            # plt.subplot(1, 3, 1)
+            # plt.title("Original Resized")
+            # plt.imshow(image_array, cmap='gray')
+            # plt.axis('off')
+
+            # # After your binary threshold
+            # plt.subplot(1, 3, 2)
+            # plt.title("After Threshold")
+            # plt.imshow(img_binary, cmap='gray', vmin=0, vmax=255)
+            # plt.axis('off')
+            # gray = cv2.cvtColor(image_array, cv2.COLOR_RGB2GRAY)
+            # plt.subplot(1, 3, 2)
+            # plt.title("After Threshold")
+            # plt.imshow(image_array, cmap='gray', vmin=0, vmax=255)
+            # plt.axis('off')
+            # print(image_array.shape)
+            # _, img_binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+            # # img_padded = np.pad(img_binary, ((2,2), (2,2)), mode='constant', constant_values=0)
+            # # img_final  = img_padded[2:30, 2:30]
+            # img_ready = img_binary.astype(np.float32) / 255.0
+            # # img_ready = np.expand_dims(img_ready, axis=-1)
+            # # img_ready = np.expand_dims(img_ready, axis=0)
+            # # np.set_printoptions(threshold=np.inf, linewidth=120, suppress=True)
+            # image_array = image_array.reshape((1,28,28,4))
+            # # plt.figure(figsize=(8, 4))
+            # _, image_array = cv2.threshold(image_array, 127, 255, cv2.THRESH_BINARY)
+            # image_array = image_array.astype('float32') / 255.0
+            # image_array = image_array.reshape((1,28,28,1))
+            
+
+            # # # FINAL image actually sent to the model (with invisible padding trick)
+            # plt.subplot(1, 3, 3)
+            # # plt.title(f"FINAL → Model Input\nPredicted: {predicted_class}")
+            # plt.imshow(image_array, cmap='gray', vmin=0, vmax=255)
+            # plt.axis('off')
+
+            # # plt.tight_layout()
+            # plt.show()
+
+            # plt.figure(figsize=(8, 4))
+
+            # plt.subplot(1, 3, 2)
+            # plt.title("After convert to np array")
+            # plt.imshow(img_ready)
+            # plt.axis('off')
+
+            # x = self.preprocess_sketch(image_np)
+            probs = self.model.predict(img, verbose=0)[0]
             idx = int(np.argmax(probs))
             return jsonify({
                 "predicted_class": str(self.labels[idx]),
@@ -81,7 +194,10 @@ class QuickDrawService:
                 ]
             })
         except Exception as e:
+            e.with_traceback(None)
+            print()
             return jsonify({"error": str(e)}), 500
+        
     def testBlank(self):
         blank = np.ones((28, 28), dtype=np.float32)
         x = np.expand_dims(blank, axis=0)

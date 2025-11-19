@@ -23,11 +23,12 @@ class QuickDrawAiClass(object):
     #     aiApp.a = value
     #     return aiApp.a
     
-    # @controller.route("/testBody", methods=['POST'])
-    # def bodyAi():
-    #     data = request.json
-    #     aiApp.a = data
-    #     return aiApp.a
+    @controller.route("/testBody", methods=['POST'])
+    def bodyAi():
+        data = request.json
+        print(data['json'])
+        aiApp.a = data
+        return aiApp.a
     
     # @controller.route("/print")
     # def valueAi():
